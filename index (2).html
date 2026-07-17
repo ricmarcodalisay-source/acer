@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paycheck Blueprint — A Gross Pay, Deductions &amp; Net Pay Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ledger:#1B4332;
+    --ledger-light:#2D6A4F;
+    --paper:#F5F0DF;
+    --paper-line:#DDD3B2;
+    --ink:#1B263B;
+    --ink-soft:#4A5568;
+    --brass:#B8860B;
+    --brass-light:#D9A441;
+    --stamp-green:#2D6A4F;
+    --stamp-red:#A4243B;
+    --card-shadow: 0 18px 40px -18px rgba(27,38,59,0.35);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(184,134,11,0.10), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(45,106,79,0.15), transparent 45%),
+      var(--ledger);
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    padding:32px 16px 64px;
+  }
+  .wrap{max-width:720px;margin:0 auto;}
+
+  /* Header */
+  .masthead{
+    text-align:center;
+    color:var(--paper);
+    margin-bottom:28px;
+  }
+  .masthead .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+    font-size:11px;
+    color:var(--brass-light);
+    margin-bottom:6px;
+  }
+  .masthead h1{
+    font-family:'Fraunces',serif;
+    font-weight:700;
+    font-size:clamp(28px,5vw,42px);
+    margin:0 0 8px;
+  }
+  .masthead p{
+    color:#D7DFD9;
+    font-size:14.5px;
+    max-width:480px;
+    margin:0 auto;
+    line-height:1.5;
+  }
+
+  /* Scoreboard */
+  .scoreboard{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin:20px 0 26px;
+    flex-wrap:wrap;
+  }
+  .chip{
+    background:rgba(247,243,232,0.08);
+    border:1px solid rgba(217,164,65,0.35);
+    color:var(--paper);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    padding:7px 14px;
+    border-radius:999px;
+    letter-spacing:0.03em;
+  }
+  .chip b{color:var(--brass-light);}
+
+  /* Ledger card (the paycheck stub) */
+  .ledger-card{
+    background:var(--paper);
+    border-radius:6px;
+    box-shadow:var(--card-shadow);
+    position:relative;
+    padding:34px 30px 30px;
+    background-image:
+      repeating-linear-gradient(var(--paper) 0 39px, var(--paper-line) 39px 40px);
+    background-position: 0 78px;
+  }
+  .ledger-card::before{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:6px;
+    box-shadow: inset 0 0 0 1px rgba(27,38,59,0.06);
+    pointer-events:none;
+  }
+  .ledger-card .corner{
+    position:absolute; width:16px; height:16px;
+    border:2px solid var(--brass);
+    opacity:0.55;
+  }
+  .corner.tl{top:10px;left:10px;border-right:none;border-bottom:none;}
+  .corner.tr{top:10px;right:10px;border-left:none;border-bottom:none;}
+  .corner.bl{bottom:10px;left:10px;border-right:none;border-top:none;}
+  .corner.br{bottom:10px;right:10px;border-left:none;border-top:none;}
+
+  .role-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--brass);
+    margin-bottom:4px;
+  }
+  .role-title{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:24px;
+    margin:0 0 12px;
+    color:var(--ink);
+  }
+  .scenario-text{
+    font-size:14.5px;
+    line-height:1.65;
+    color:var(--ink-soft);
+    margin-bottom:22px;
+    padding-bottom:18px;
+    border-bottom:1px dashed var(--paper-line);
+  }
+  .scenario-text .term{
+    color:var(--ledger-light);
+    font-weight:600;
+  }
+
+  /* Field rows */
+  .field-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    padding:11px 0;
+  }
+  .field-row.total-row{
+    border-top:2px solid var(--ink);
+    margin-top:6px;
+    padding-top:16px;
+  }
+  .field-row.net-row{
+    border-top:2px solid var(--brass);
+    margin-top:2px;
+    padding-top:16px;
+  }
+  .field-label{
+    font-size:14px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex:1;
+  }
+  .field-row.total-row .field-label,
+  .field-row.net-row .field-label{
+    font-weight:700;
+    font-family:'Fraunces',serif;
+    font-size:16px;
+  }
+  .hint-btn{
+    width:18px;height:18px;border-radius:50%;
+    border:1px solid var(--ink-soft);
+    background:none;
+    color:var(--ink-soft);
+    font-size:11px;
+    line-height:1;
+    cursor:pointer;
+    font-family:'IBM Plex Mono',monospace;
+    flex-shrink:0;
+  }
+  .hint-btn:hover{background:var(--ink-soft);color:var(--paper);}
+  .hint-text{
+    display:none;
+    font-size:12px;
+    color:var(--brass);
+    font-family:'IBM Plex Mono',monospace;
+    margin-top:3px;
+  }
+  .hint-text.show{display:block;}
+  .field-label-col{flex:1;}
+
+  .field-input-wrap{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .dollar{font-family:'IBM Plex Mono',monospace;color:var(--ink-soft);font-size:13.5px;}
+  input.paycheck-input{
+    width:108px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:15px;
+    padding:7px 9px;
+    border:1.5px solid var(--paper-line);
+    border-radius:4px;
+    background:#fff;
+    color:var(--ink);
+    text-align:right;
+  }
+  input.paycheck-input:focus{outline:none;border-color:var(--ledger-light);}
+  input.paycheck-input.correct{
+    border-color:var(--stamp-green);
+    background:#EAF4EE;
+    color:var(--stamp-green);
+    font-weight:700;
+  }
+  input.paycheck-input.wrong{
+    border-color:var(--stamp-red);
+    background:#FBEAEC;
+  }
+  input.paycheck-input:disabled{opacity:0.9;}
+
+  .mark{
+    width:20px;
+    text-align:center;
+    font-size:15px;
+    font-weight:700;
+  }
+  .mark.mark-correct{color:var(--stamp-green);}
+  .mark.mark-wrong{color:var(--stamp-red);}
+
+  /* Actions */
+  .actions{
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    margin-top:26px;
+  }
+  button.primary-btn{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;
+    font-size:13.5px;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    padding:12px 26px;
+    border-radius:4px;
+    border:none;
+    background:var(--ledger);
+    color:var(--paper);
+    cursor:pointer;
+    transition:transform 0.12s ease, background 0.15s ease;
+  }
+  button.primary-btn:hover{background:var(--ledger-light);}
+  button.primary-btn:active{transform:scale(0.97);}
+  button.primary-btn.brass{background:var(--brass);color:#2A1E00;}
+  button.primary-btn.brass:hover{background:var(--brass-light);}
+  button.primary-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+  /* Stamp */
+  .stamp-zone{
+    position:relative;
+    height:0;
+  }
+  .stamp{
+    position:absolute;
+    top:-190px;
+    right:6px;
+    font-family:'Fraunces',serif;
+    font-weight:700;
+    font-size:22px;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
+    padding:10px 16px;
+    border:4px solid currentColor;
+    border-radius:8px;
+    transform:rotate(-9deg) scale(2.4);
+    opacity:0;
+    pointer-events:none;
+  }
+  .stamp.show{
+    animation: stampdown 0.45s cubic-bezier(.2,1.4,.4,1) forwards;
+  }
+  @keyframes stampdown{
+    0%{opacity:0;transform:rotate(-9deg) scale(2.6);}
+    60%{opacity:1;transform:rotate(-9deg) scale(0.92);}
+    100%{opacity:0.92;transform:rotate(-9deg) scale(1);}
+  }
+  .stamp.approved{color:var(--stamp-green);}
+  .stamp.recheck{color:var(--stamp-red);}
+
+  /* Intro / end screens */
+  .panel{
+    background:var(--paper);
+    border-radius:6px;
+    box-shadow:var(--card-shadow);
+    padding:36px 30px;
+    text-align:center;
+  }
+  .panel h2{
+    font-family:'Fraunces',serif;
+    font-size:26px;
+    margin:0 0 14px;
+  }
+  .panel p{
+    color:var(--ink-soft);
+    font-size:14.5px;
+    line-height:1.7;
+    max-width:520px;
+    margin:0 auto 14px;
+  }
+  .glossary{
+    text-align:left;
+    display:grid;
+    gap:12px;
+    margin:22px 0 26px;
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-radius:6px;
+    padding:18px 20px;
+  }
+  .glossary-item b{
+    font-family:'Fraunces',serif;
+    color:var(--ledger-light);
+    font-size:15px;
+  }
+  .glossary-item span{
+    display:block;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+  .final-score{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:44px;
+    font-weight:700;
+    color:var(--ledger-light);
+    margin:8px 0;
+  }
+  .rank-tag{
+    display:inline-block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:#fff;
+    background:var(--brass);
+    padding:6px 14px;
+    border-radius:999px;
+    margin-bottom:18px;
+  }
+
+  .progress-track{
+    display:flex;
+    gap:6px;
+    justify-content:center;
+    margin-top:18px;
+  }
+  .progress-dot{
+    width:9px;height:9px;border-radius:50%;
+    background:rgba(247,243,232,0.25);
+  }
+  .progress-dot.done{background:var(--brass-light);}
+  .progress-dot.active{background:var(--paper);}
+
+  @media (max-width:480px){
+    .ledger-card{padding:26px 18px 24px;}
+    input.paycheck-input{width:88px;font-size:13.5px;}
+    .field-label{font-size:13px;}
+    .stamp{right:-4px;font-size:17px;top:-160px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <div class="eyebrow">First Paycheck Training Program</div>
+    <h1>Paycheck Blueprint</h1>
+    <p>Build five real paychecks by hand. Work out the gross pay, apply every deduction, and land on the exact net pay — the amount that actually hits the bank.</p>
+  </div>
+
+  <div class="scoreboard" id="scoreboard">
+    <div class="chip">SCORE <b id="scoreVal">0</b></div>
+    <div class="chip">ROUND <b id="roundVal">0</b>/5</div>
+  </div>
+
+  <div id="app"></div>
+
+</div>
+
+<script>
+const ROUNDS = [
+  {
+    role: "New Hire — Warehouse Clerk",
+    tag: "Round 1 · Hourly Pay",
+    story: `You just started as a warehouse clerk earning <span class="term">$16.00/hour</span>. This week you worked <span class="term">35 hours</span>. Build your paycheck from scratch.`,
+    income: [{ label: "Regular hours (35 × $16.00)", value: 35 * 16 }],
+    deductions: [
+      { label: "Federal Income Tax (10% of gross)", rate: 0.10, hint: "Gross Pay × 10%" },
+      { label: "Social Security (6.2% of gross)", rate: 0.062, hint: "Gross Pay × 6.2%" },
+      { label: "Medicare (1.45% of gross)", rate: 0.0145, hint: "Gross Pay × 1.45%" },
+    ],
+  },
+  {
+    role: "Retail Associate",
+    tag: "Round 2 · Adding State Tax & Insurance",
+    story: `You're now a retail associate at <span class="term">$18.00/hour</span>, and you worked <span class="term">38 hours</span> this week. This paycheck adds a state tax and a flat-dollar health insurance deduction.`,
+    income: [{ label: "Regular hours (38 × $18.00)", value: 38 * 18 }],
+    deductions: [
+      { label: "Federal Income Tax (12% of gross)", rate: 0.12, hint: "Gross Pay × 12%" },
+      { label: "State Income Tax (4% of gross)", rate: 0.04, hint: "Gross Pay × 4%" },
+      { label: "Social Security (6.2% of gross)", rate: 0.062, hint: "Gross Pay × 6.2%" },
+      { label: "Medicare (1.45% of gross)", rate: 0.0145, hint: "Gross Pay × 1.45%" },
+      { label: "Health Insurance (flat)", flat: 25, hint: "A fixed $25.00 — same every paycheck" },
+    ],
+  },
+  {
+    role: "Office Assistant",
+    tag: "Round 3 · Salary Pay + Retirement",
+    story: `You're salaried now: <span class="term">$46,800/year</span>, paid <span class="term">biweekly</span> (26 paychecks a year). This round adds a 401(k) retirement contribution.`,
+    income: [{ label: "Biweekly salary (46,800 ÷ 26)", value: 46800 / 26 }],
+    deductions: [
+      { label: "Federal Income Tax (15% of gross)", rate: 0.15, hint: "Gross Pay × 15%" },
+      { label: "State Income Tax (5% of gross)", rate: 0.05, hint: "Gross Pay × 5%" },
+      { label: "Social Security (6.2% of gross)", rate: 0.062, hint: "Gross Pay × 6.2%" },
+      { label: "Medicare (1.45% of gross)", rate: 0.0145, hint: "Gross Pay × 1.45%" },
+      { label: "Health Insurance (flat)", flat: 60, hint: "A fixed $60.00" },
+      { label: "401(k) Retirement (3% of gross)", rate: 0.03, hint: "Gross Pay × 3%" },
+    ],
+  },
+  {
+    role: "Shift Lead",
+    tag: "Round 4 · Overtime Pay",
+    story: `As shift lead you earn <span class="term">$20.00/hour</span>. This week you worked <span class="term">40 regular hours</span> plus <span class="term">6 overtime hours</span>. Overtime pays <span class="term">1.5×</span> your normal rate — add both together for gross pay.`,
+    income: [
+      { label: "Regular hours (40 × $20.00)", value: 40 * 20 },
+      { label: "Overtime hours (6 × $30.00)", value: 6 * 30 },
+    ],
+    deductions: [
+      { label: "Federal Income Tax (14% of gross)", rate: 0.14, hint: "Gross Pay × 14%" },
+      { label: "State Income Tax (4.5% of gross)", rate: 0.045, hint: "Gross Pay × 4.5%" },
+      { label: "Social Security (6.2% of gross)", rate: 0.062, hint: "Gross Pay × 6.2%" },
+      { label: "Medicare (1.45% of gross)", rate: 0.0145, hint: "Gross Pay × 1.45%" },
+      { label: "Health Insurance (flat)", flat: 45, hint: "A fixed $45.00" },
+      { label: "401(k) Retirement (4% of gross)", rate: 0.04, hint: "Gross Pay × 4%" },
+    ],
+  },
+  {
+    role: "Team Manager",
+    tag: "Round 5 · Salary + Bonus (Final Round)",
+    story: `You manage the team now: <span class="term">$65,000/year</span>, paid <span class="term">monthly</span>. This month you also earned a <span class="term">$500 performance bonus</span>, which counts toward your gross pay. This is the most complex paycheck yet — six deductions.`,
+    income: [
+      { label: "Monthly salary (65,000 ÷ 12)", value: 65000 / 12 },
+      { label: "Performance bonus", value: 500 },
+    ],
+    deductions: [
+      { label: "Federal Income Tax (18% of gross)", rate: 0.18, hint: "Gross Pay × 18%" },
+      { label: "State Income Tax (5.5% of gross)", rate: 0.055, hint: "Gross Pay × 5.5%" },
+      { label: "Social Security (6.2% of gross)", rate: 0.062, hint: "Gross Pay × 6.2%" },
+      { label: "Medicare (1.45% of gross)", rate: 0.0145, hint: "Gross Pay × 1.45%" },
+      { label: "Health Insurance (flat)", flat: 150, hint: "A fixed $150.00" },
+      { label: "401(k) Retirement (6% of gross)", rate: 0.06, hint: "Gross Pay × 6%" },
+    ],
+  },
+];
+
+let state = { screen: "intro", round: 0, score: 0, fieldStatus: [] };
+
+function money(n){
+  return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function round2(n){ return Math.round(n*100)/100; }
+
+function computeAnswers(r){
+  const gross = round2(r.income.reduce((s,i)=>s+i.value,0));
+  const deds = r.deductions.map(d => round2(d.flat !== undefined ? d.flat : gross * d.rate));
+  const totalDed = round2(deds.reduce((s,d)=>s+d,0));
+  const net = round2(gross - totalDed);
+  return { gross, deds, totalDed, net };
+}
+
+function render(){
+  document.getElementById('scoreVal').textContent = state.score;
+  document.getElementById('roundVal').textContent = Math.min(state.round+1,5);
+  const app = document.getElementById('app');
+
+  if(state.screen === 'intro'){
+    app.innerHTML = `
+      <div class="panel">
+        <h2>Before you clock in...</h2>
+        <p>Every paycheck follows the same three-part structure. Learn these once and you can read any paycheck for the rest of your life.</p>
+        <div class="glossary">
+          <div class="glossary-item">
+            <b>Gross Income</b>
+            <span>Everything you earned before anything is taken out — regular hours, overtime, bonuses, all added together.</span>
+          </div>
+          <div class="glossary-item">
+            <b>Deductions</b>
+            <span>Amounts subtracted from your gross pay: taxes (federal, state, Social Security, Medicare), insurance, and retirement contributions.</span>
+          </div>
+          <div class="glossary-item">
+            <b>Net Pay</b>
+            <span>Gross Income minus Total Deductions. This is your "take-home pay" — what actually lands in your bank account.</span>
+          </div>
+        </div>
+        <button class="primary-btn brass" onclick="startGame()">Start Round 1</button>
+      </div>
+    `;
+    return;
+  }
+
+  if(state.screen === 'end'){
+    const max = ROUNDS.reduce((s,r)=>s + (r.deductions.length+3)*10 + 20,0);
+    const pct = state.score/max;
+    let rank = "Trainee";
+    if(pct >= 0.95) rank = "Payroll Pro";
+    else if(pct >= 0.8) rank = "Certified Paycheck Reader";
+    else if(pct >= 0.6) rank = "Rising Clerk";
+    app.innerHTML = `
+      <div class="panel">
+        <div class="rank-tag">${rank}</div>
+        <h2>All five paychecks processed.</h2>
+        <div class="final-score">${state.score} pts</div>
+        <p>You built paychecks with hourly pay, overtime, salary, bonuses, and six different deduction types. Next time you open a real paycheck, you'll know exactly where every dollar went.</p>
+        <button class="primary-btn brass" onclick="restartGame()">Play Again</button>
+      </div>
+    `;
+    return;
+  }
+
+  // playing screen
+  const r = ROUNDS[state.round];
+  const ans = computeAnswers(r);
+  const fields = [
+    { key:'gross', label:'Gross Pay', hint: r.income.map(i=>i.label+" = $"+money(i.value)).join(' + '), answer: ans.gross },
+    ...r.deductions.map((d,i)=>({ key:'ded'+i, label:d.label, hint:d.hint, answer: ans.deds[i] })),
+    { key:'total', label:'Total Deductions', hint:'Add up every deduction line above', answer: ans.totalDed, isTotal:true },
+    { key:'net', label:'Net Pay (take-home)', hint:'Gross Pay − Total Deductions', answer: ans.net, isNet:true },
+  ];
+
+  if(!state.fieldStatus.length){
+    state.fieldStatus = fields.map(()=> 'pending');
+  }
+
+  const rowsHtml = fields.map((f,i)=>{
+    const cls = f.isTotal ? 'field-row total-row' : (f.isNet ? 'field-row net-row' : 'field-row');
+    const status = state.fieldStatus[i];
+    const inputCls = status === 'correct' ? 'correct' : (status === 'wrong' ? 'wrong' : '');
+    const disabled = status === 'correct' ? 'disabled' : '';
+    const mark = status === 'correct' ? '<span class="mark mark-correct">✓</span>' : (status==='wrong' ? '<span class="mark mark-wrong">✗</span>' : '<span class="mark"></span>');
+    return `
+      <div class="${cls}">
+        <div class="field-label-col">
+          <div class="field-label">
+            <span>${f.label}</span>
+            <button class="hint-btn" type="button" onclick="toggleHint(${i})">?</button>
+          </div>
+          <div class="hint-text" id="hint-${i}">${f.hint}</div>
+        </div>
+        <div class="field-input-wrap">
+          <span class="dollar">$</span>
+          <input class="paycheck-input ${inputCls}" type="number" step="0.01" id="field-${i}" ${disabled}>
+          ${mark}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const allCorrect = state.fieldStatus.every(s => s === 'correct');
+  const isLastRound = state.round === ROUNDS.length - 1;
+
+  app.innerHTML = `
+    <div class="ledger-card">
+      <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+      <div class="role-tag">${r.tag}</div>
+      <div class="role-title">${r.role}</div>
+      <div class="scenario-text">${r.story}</div>
+      ${rowsHtml}
+      <div class="stamp-zone"><div class="stamp" id="stamp"></div></div>
+      <div class="actions">
+        ${!allCorrect ? `<button class="primary-btn" onclick="checkAnswers()">Check Paycheck</button>` : ''}
+        ${allCorrect ? `<button class="primary-btn brass" onclick="nextRound()">${isLastRound ? 'See Final Results' : 'Next Paycheck →'}</button>` : ''}
+      </div>
+    </div>
+    <div class="progress-track">
+      ${ROUNDS.map((_,i)=>`<div class="progress-dot ${i<state.round?'done':(i===state.round?'active':'')}"></div>`).join('')}
+    </div>
+  `;
+
+  fields.forEach((f,i)=>{
+    if(state.fieldStatus[i] === 'correct'){
+      document.getElementById('field-'+i).value = f.answer.toFixed(2);
+    }
+  });
+}
+
+function toggleHint(i){
+  document.getElementById('hint-'+i).classList.toggle('show');
+}
+
+function startGame(){
+  state = { screen:'playing', round:0, score:0, fieldStatus: [] };
+  render();
+}
+function restartGame(){
+  state = { screen:'intro', round:0, score:0, fieldStatus: [] };
+  render();
+}
+
+function checkAnswers(){
+  const r = ROUNDS[state.round];
+  const ans = computeAnswers(r);
+  const fields = [
+    ans.gross,
+    ...ans.deds,
+    ans.totalDed,
+    ans.net,
+  ];
+  let anyWrong = false;
+  let newlyCorrect = 0;
+  fields.forEach((correctVal, i)=>{
+    if(state.fieldStatus[i] === 'correct') return;
+    const input = document.getElementById('field-'+i);
+    const val = parseFloat(input.value);
+    if(!isNaN(val) && Math.abs(val - correctVal) < 0.02){
+      state.fieldStatus[i] = 'correct';
+      newlyCorrect++;
+    } else {
+      state.fieldStatus[i] = 'wrong';
+      anyWrong = true;
+    }
+  });
+  state.score += newlyCorrect * 10;
+  const allCorrect = state.fieldStatus.every(s => s === 'correct');
+  if(allCorrect) state.score += 20;
+  render();
+  const stamp = document.getElementById('stamp');
+  if(stamp){
+    stamp.textContent = allCorrect ? 'Approved' : 'Recheck';
+    stamp.className = 'stamp show ' + (allCorrect ? 'approved' : 'recheck');
+  }
+}
+
+function nextRound(){
+  if(state.round < ROUNDS.length - 1){
+    state.round += 1;
+    state.fieldStatus = [];
+    state.screen = 'playing';
+  } else {
+    state.screen = 'end';
+  }
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
