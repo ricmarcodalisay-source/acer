@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polygon Blast!</title>
+<style>
+  :root{
+    --bg:#1B1F3B;
+    --panel:#252A52;
+    --accent:#FFC857;
+    --accent2:#E63946;
+    --safe:#3FA796;
+    --text:#F1F1F6;
+    --muted:#A9AECB;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:linear-gradient(160deg,#1B1F3B,#12142B);
+    color:var(--text);
+    font-family:'Segoe UI',Verdana,sans-serif;
+    min-height:100vh;
+    padding:20px 14px 60px;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+  h1{
+    text-align:center;
+    font-size:clamp(26px,6vw,38px);
+    margin:0 0 4px;
+    letter-spacing:0.02em;
+  }
+  h1 span{color:var(--accent);}
+  .subtitle{
+    text-align:center;
+    color:var(--muted);
+    font-size:14px;
+    margin-bottom:18px;
+  }
+
+  .board{
+    background:var(--panel);
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 12px 30px rgba(0,0,0,0.35);
+  }
+
+  .players-row{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-bottom:16px;
+  }
+  .player-badge{
+    background:rgba(255,255,255,0.06);
+    border:2px solid transparent;
+    border-radius:10px;
+    padding:8px 12px;
+    text-align:center;
+    min-width:100px;
+    font-size:12.5px;
+    transition:border-color 0.2s;
+  }
+  .player-badge.active{border-color:var(--accent);}
+  .player-badge.dead{opacity:0.35;text-decoration:line-through;}
+  .player-badge .pname{font-weight:700;font-size:13.5px;margin-bottom:2px;}
+  .player-badge .pcards{color:var(--muted);}
+
+  .deck-area{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:26px;
+    margin:18px 0;
+  }
+  .deck-pile{
+    width:82px;height:112px;
+    border-radius:10px;
+    background:repeating-linear-gradient(45deg,#3a3f6e,#3a3f6e 6px,#333865 6px,#333865 12px);
+    border:2px solid var(--accent);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:26px;
+    box-shadow:0 6px 14px rgba(0,0,0,0.4);
+  }
+  .deck-label{
+    text-align:center;
+    font-size:12px;
+    color:var(--muted);
+    margin-top:6px;
+  }
+
+  #drawBtn{
+    background:var(--accent);
+    color:#1B1F3B;
+    border:none;
+    font-weight:800;
+    font-size:15px;
+    padding:14px 26px;
+    border-radius:10px;
+    cursor:pointer;
+    box-shadow:0 6px 0 #b98d2c;
+  }
+  #drawBtn:active{transform:translateY(3px);box-shadow:0 3px 0 #b98d2c;}
+  #drawBtn:disabled{background:#555a7a;color:#8b90ac;box-shadow:none;cursor:not-allowed;}
+
+  .log-panel{
+    background:rgba(0,0,0,0.25);
+    border-radius:10px;
+    padding:10px 14px;
+    height:120px;
+    overflow-y:auto;
+    font-size:12.5px;
+    color:var(--muted);
+    margin:14px 0;
+    display:flex;
+    flex-direction:column-reverse;
+  }
+  .log-panel div{margin-bottom:5px;}
+  .log-panel div.hi{color:var(--accent);font-weight:700;}
+  .log-panel div.bad{color:var(--accent2);font-weight:700;}
+  .log-panel div.good{color:var(--safe);font-weight:700;}
+
+  .hand-section h3{
+    font-size:13.5px;
+    color:var(--muted);
+    margin:16px 0 8px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+  }
+  .hand-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .card{
+    width:96px;
+    background:#fff;
+    color:#1B1F3B;
+    border-radius:10px;
+    padding:10px 8px 12px;
+    text-align:center;
+    box-shadow:0 6px 12px rgba(0,0,0,0.3);
+  }
+  .poly-shape{
+    width:44px;height:44px;
+    margin:4px auto 8px;
+  }
+  .shape-triangle{background:#4CC9F0;clip-path:polygon(50% 0%,0% 100%,100% 100%);}
+  .shape-square{background:var(--safe);clip-path:polygon(0 0,100% 0,100% 100%,0 100%);}
+  .shape-pentagon{background:#B983FF;clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%);}
+  .shape-hexagon{background:var(--accent2);clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);}
+  .shape-heptagon{background:#F4A261;clip-path:polygon(50% 0%,90% 21%,100% 61%,74% 100%,26% 100%,0% 61%,10% 21%);}
+  .shape-octagon{background:#EF476F;clip-path:polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%);}
+
+  .card-name{font-size:12px;font-weight:800;line-height:1.2;}
+  .card-side{font-size:10px;color:#555;margin:2px 0 8px;}
+  .card button{
+    width:100%;
+    font-size:11px;
+    padding:5px 0;
+    border:none;
+    border-radius:6px;
+    background:var(--bg);
+    color:#fff;
+    cursor:pointer;
+    font-weight:700;
+  }
+  .card button:hover{background:#333865;}
+  .card.defuse-card{background:#EAF9F1;}
+  .card.defuse-card .card-name{color:var(--safe);}
+
+  .actions{display:flex;justify-content:center;margin:10px 0 4px;}
+
+  /* Modal */
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,0.65);
+    display:none;
+    align-items:center;justify-content:center;
+    z-index:50;
+    padding:16px;
+  }
+  .overlay.show{display:flex;}
+  .modal{
+    background:var(--panel);
+    border-radius:14px;
+    padding:26px 22px;
+    max-width:420px;
+    width:100%;
+    text-align:center;
+    box-shadow:0 20px 50px rgba(0,0,0,0.5);
+  }
+  .modal h2{margin:0 0 6px;font-size:20px;}
+  .modal p{color:var(--muted);font-size:13.5px;margin-bottom:16px;}
+  .choice-btn{
+    display:block;
+    width:100%;
+    background:#333865;
+    color:#fff;
+    border:2px solid transparent;
+    padding:10px;
+    border-radius:8px;
+    margin-bottom:8px;
+    cursor:pointer;
+    font-size:14px;
+  }
+  .choice-btn:hover{border-color:var(--accent);}
+  .choice-btn.correct{background:var(--safe);}
+  .choice-btn.wrong{background:var(--accent2);}
+  .modal .close-btn{
+    margin-top:6px;
+    background:var(--accent);
+    color:#1B1F3B;
+    font-weight:800;
+    border:none;
+    padding:10px 20px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .future-list{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    margin:14px 0;
+  }
+
+  .end-screen{
+    text-align:center;
+    padding:20px 0;
+  }
+  .end-screen .trophy{font-size:52px;}
+  .end-screen h2{margin:6px 0;}
+  .end-screen button{
+    margin-top:14px;
+    background:var(--accent);
+    color:#1B1F3B;
+    font-weight:800;
+    border:none;
+    padding:12px 24px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:14px;
+  }
+
+  .legend{
+    margin-top:22px;
+    background:rgba(255,255,255,0.04);
+    border-radius:10px;
+    padding:14px 16px;
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.7;
+  }
+  .legend b{color:var(--text);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Polygon <span>Blast!</span></h1>
+  <div class="subtitle">Huwag mong hayaang ma-draw mo ang Sumasabog na Polygon. Ang huling buhay, siya ang panalo!</div>
+
+  <div class="board">
+    <div class="players-row" id="playersRow"></div>
+
+    <div class="deck-area">
+      <div>
+        <div class="deck-pile" id="deckPile">🂠</div>
+        <div class="deck-label" id="deckCount">0 cards</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="drawBtn" onclick="humanDraw()">Gumuhit ng Card</button>
+    </div>
+
+    <div class="log-panel" id="logPanel"></div>
+
+    <div class="hand-section">
+      <h3>Ang Iyong Kamay (Hand)</h3>
+      <div class="hand-row" id="handRow"></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <b>Paano Maglaro:</b> Bawat turn, pwede kang maglaro ng card mula sa hand mo, tapos gumuhit ka ng card mula sa deck. Kapag na-draw mo ang <b>💥 Sumasabog na Bituin</b>, tapos ka na — maliban kung may <b>🟩 Depensa (Square)</b> kang gagamitin. Ang mga action card ay hugis-polygon: <b>🔺 Tatsulok = Skip</b> (walang guhit, tapos agad ang turn), <b>⬡ Heksagono = Atake</b> (susunod na manlalaro, 2x gumuhit), <b>⬟ Pentagon = Halo</b> (i-shuffle ang deck), <b>⬢ Heptagon = Tingnan ang Kinabukasan</b> (tingnan ang susunod na 3 card). Kapag na-draw mo ang <b>🟥 Oktagono na Tanong</b>, sasagutin mo ang tanong tungkol sa polygon!
+  </div>
+</div>
+
+<div class="overlay" id="triviaOverlay">
+  <div class="modal">
+    <h2>❓ Tanong tungkol sa Polygon</h2>
+    <p id="triviaQuestion"></p>
+    <div id="triviaChoices"></div>
+  </div>
+</div>
+
+<div class="overlay" id="futureOverlay">
+  <div class="modal">
+    <h2>🔮 Tingnan ang Kinabukasan</h2>
+    <p>Ito ang susunod na 3 card sa deck:</p>
+    <div class="future-list" id="futureList"></div>
+    <button class="close-btn" onclick="closeFuture()">Sige, Bumalik sa Laro</button>
+  </div>
+</div>
+
+<div class="overlay" id="endOverlay">
+  <div class="modal end-screen">
+    <div class="trophy" id="endTrophy">🏆</div>
+    <h2 id="endTitle"></h2>
+    <p id="endText"></p>
+    <button onclick="newGame()">Maglaro Ulit</button>
+  </div>
+</div>
+
+<script>
+const SHAPE_INFO = {
+  triangle:  { cls:'shape-triangle',  name:'Tatsulok (Skip)',        side:'3 gilid' },
+  square:    { cls:'shape-square',    name:'Depensa (Defuse)',       side:'4 gilid' },
+  pentagon:  { cls:'shape-pentagon',  name:'Pentagon (Halo)',        side:'5 gilid' },
+  hexagon:   { cls:'shape-hexagon',   name:'Heksagono (Atake)',      side:'6 gilid' },
+  heptagon:  { cls:'shape-heptagon',  name:'Heptagon (Kinabukasan)', side:'7 gilid' },
+  octagon:   { cls:'shape-octagon',   name:'Oktagono (Tanong)',      side:'8 gilid' },
+};
+
+const TRIVIA_BANK = [
+  { q:"Ilang gilid mayroon ang TATSULOK (triangle)?", choices:["3","4","5","6"], correct:0 },
+  { q:"Ilang gilid mayroon ang PENTAGON?", choices:["4","5","6","7"], correct:1 },
+  { q:"Ilang gilid mayroon ang HEKSAGONO (hexagon)?", choices:["5","6","7","8"], correct:1 },
+  { q:"Ilang gilid mayroon ang OKTAGONO (octagon)?", choices:["6","7","8","9"], correct:2 },
+  { q:"Ano ang tawag sa polygon na may 7 gilid?", choices:["Heptagon","Oktagon","Nonagon","Pentagon"], correct:0 },
+  { q:"Ano ang tawag sa polygon na may 9 na gilid?", choices:["Oktagon","Nonagon","Decagon","Heptagon"], correct:1 },
+  { q:"Ano ang tawag sa polygon na may 10 gilid?", choices:["Nonagon","Decagon","Dodecagon","Heptagon"], correct:1 },
+  { q:"Sa isang REGULAR na polygon, ano ang totoo?", choices:["Magkaiba ang haba ng bawat gilid","Pantay-pantay ang lahat ng gilid at anggulo","Wala itong sulok","Bilog ang hugis nito"], correct:1 },
+  { q:"Ilang sulok (corners) mayroon ang isang PENTAGON?", choices:["4","5","6","7"], correct:1 },
+  { q:"Ang PARISUKAT (square) ay may ilang gilid?", choices:["3","4","5","6"], correct:1 },
+];
+
+let players, deck, discard, currentPlayerIndex, drawsRequired, pendingBonusDraws, gameOver, logMessages, humanTurnLocked;
+
+function shuffleArray(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function buildDeck(numPlayers){
+  let d = [];
+  const bombCount = numPlayers - 1;
+  for(let i=0;i<bombCount;i++) d.push({type:'bomb'});
+  for(let i=0;i<4;i++) d.push({type:'octagon'});  // trivia
+  for(let i=0;i<4;i++) d.push({type:'triangle'}); // skip
+  for(let i=0;i<3;i++) d.push({type:'hexagon'});  // attack
+  for(let i=0;i<3;i++) d.push({type:'pentagon'}); // shuffle
+  for(let i=0;i<3;i++) d.push({type:'heptagon'}); // future
+  return shuffleArray(d);
+}
+
+function newGame(){
+  players = [
+    { name:'Ikaw', isHuman:true, hand:[{type:'square'}], alive:true },
+    { name:'Bot Andrea', isHuman:false, hand:[{type:'square'}], alive:true },
+    { name:'Bot Marco', isHuman:false, hand:[{type:'square'}], alive:true },
+  ];
+  deck = buildDeck(players.length);
+  discard = [];
+  currentPlayerIndex = 0;
+  drawsRequired = 1;
+  pendingBonusDraws = 0;
+  gameOver = false;
+  humanTurnLocked = false;
+  logMessages = [];
+  document.getElementById('endOverlay').classList.remove('show');
+  addLog("Simula ng laro! Ikaw ang unang gagalaw.", 'hi');
+  render();
+}
+
+function addLog(msg, kind){
+  logMessages.push({msg, kind});
+  const panel = document.getElementById('logPanel');
+  const div = document.createElement('div');
+  if(kind) div.className = kind;
+  div.textContent = msg;
+  panel.prepend(div);
+}
+
+function nextAliveIndex(from){
+  let i = from;
+  for(let step=0; step<players.length; step++){
+    i = (i+1) % players.length;
+    if(players[i].alive) return i;
+  }
+  return from;
+}
+
+function aliveCount(){
+  return players.filter(p=>p.alive).length;
+}
+
+function render(){
+  // players row
+  const pr = document.getElementById('playersRow');
+  pr.innerHTML = players.map((p,idx)=>{
+    const cls = ['player-badge'];
+    if(idx===currentPlayerIndex && p.alive && !gameOver) cls.push('active');
+    if(!p.alive) cls.push('dead');
+    return `<div class="${cls.join(' ')}">
+      <div class="pname">${p.name}</div>
+      <div class="pcards">${p.alive ? p.hand.length+' card sa hand' : 'Sumabog 💥'}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('deckCount').textContent = deck.length + ' cards sa deck';
+
+  // hand row (human only)
+  const human = players[0];
+  const handRow = document.getElementById('handRow');
+  if(human.hand.length===0){
+    handRow.innerHTML = `<div style="color:var(--muted);font-size:13px;">Walang laman ang iyong hand.</div>`;
+  } else {
+    handRow.innerHTML = human.hand.map((c,i)=>{
+      const info = SHAPE_INFO[c.type];
+      const isDefuse = c.type==='square';
+      const playable = ['triangle','hexagon','pentagon','heptagon'].includes(c.type);
+      const canAct = !gameOver && currentPlayerIndex===0 && !humanTurnLocked;
+      return `<div class="card ${isDefuse?'defuse-card':''}">
+        <div class="poly-shape ${info.cls}"></div>
+        <div class="card-name">${info.name}</div>
+        <div class="card-side">${info.side}</div>
+        ${playable ? `<button ${canAct?'':'disabled'} onclick="playCard(${i})">Ipaglaro</button>` : (isDefuse ? `<button disabled>Awtomatiko</button>` : '')}
+      </div>`;
+    }).join('');
+  }
+
+  const drawBtn = document.getElementById('drawBtn');
+  drawBtn.disabled = gameOver || currentPlayerIndex!==0 || humanTurnLocked;
+  drawBtn.textContent = drawsRequired>1 ? `Gumuhit ng Card (${drawsRequired}x pa)` : 'Gumuhit ng Card';
+}
+
+function playCard(handIndex){
+  if(currentPlayerIndex!==0 || gameOver || humanTurnLocked) return;
+  const human = players[0];
+  const card = human.hand[handIndex];
+  human.hand.splice(handIndex,1);
+  discard.push(card);
+  const info = SHAPE_INFO[card.type];
+
+  if(card.type==='triangle'){
+    addLog(`Naglaro ka ng ${info.name} — tapos agad ang turn mo nang walang guhit!`, 'good');
+    endTurn();
+  } else if(card.type==='hexagon'){
+    pendingBonusDraws = 1;
+    addLog(`Naglaro ka ng ${info.name} — ang susunod na manlalaro ay kailangang gumuhit ng 2 beses!`, 'bad');
+    endTurn();
+  } else if(card.type==='pentagon'){
+    shuffleArray(deck);
+    addLog(`Naglaro ka ng ${info.name} — nahalo ang deck.`, 'hi');
+    render();
+  } else if(card.type==='heptagon'){
+    showFuture();
+  }
+}
+
+function showFuture(){
+  const top3 = deck.slice(-3).reverse();
+  const list = document.getElementById('futureList');
+  if(top3.length===0){
+    list.innerHTML = `<div style="color:var(--muted);">Wala nang natitirang card.</div>`;
+  } else {
+    list.innerHTML = top3.map(c=>{
+      const info = SHAPE_INFO[c.type] || {cls:'shape-hexagon', name:'Sumasabog!', side:'💥'};
+      const isBomb = c.type==='bomb';
+      return `<div class="card" style="width:78px;">
+        <div class="poly-shape ${isBomb?'':info.cls}" style="${isBomb?'background:#111;display:flex;align-items:center;justify-content:center;font-size:20px;':''}">${isBomb?'💥':''}</div>
+        <div class="card-name" style="font-size:10.5px;">${isBomb?'Sumasabog':info.name}</div>
+      </div>`;
+    }).join('');
+  }
+  addLog(`Naglaro ka ng Heptagon (Kinabukasan) — sinilip mo ang susunod na 3 card.`, 'hi');
+  document.getElementById('futureOverlay').classList.add('show');
+  render();
+}
+function closeFuture(){
+  document.getElementById('futureOverlay').classList.remove('show');
+}
+
+function humanDraw(){
+  if(currentPlayerIndex!==0 || gameOver || humanTurnLocked) return;
+  humanTurnLocked = true;
+  render();
+  drawCard(0);
+}
+
+function reshuffleIfEmpty(){
+  if(deck.length===0 && discard.length>0){
+    deck = shuffleArray(discard.splice(0));
+    addLog("Naubos ang deck — hinalo ulit ang mga nagamit na card.", 'hi');
+  }
+}
+
+function drawCard(idx){
+  reshuffleIfEmpty();
+  if(deck.length===0){
+    addLog("Wala nang matitirang card! Tapos ang laro sa patas na resulta.", 'hi');
+    endGameDraw();
+    return;
+  }
+  const card = deck.pop();
+  const p = players[idx];
+
+  if(card.type==='bomb'){
+    handleBombDraw(idx, card);
+  } else if(card.type==='octagon'){
+    handleTriviaDraw(idx, card);
+  } else {
+    const info = SHAPE_INFO[card.type];
+    p.hand.push(card);
+    addLog(`${p.name} humugot ng ${info.name} — idinagdag sa hand.`);
+    afterDrawResolved(idx);
+  }
+}
+
+function handleBombDraw(idx, card){
+  const p = players[idx];
+  const defuseIdx = p.hand.findIndex(c=>c.type==='square');
+  if(defuseIdx>=0){
+    p.hand.splice(defuseIdx,1);
+    const pos = Math.floor(Math.random()*(deck.length+1));
+    deck.splice(pos,0,card);
+    addLog(`💥 ${p.name} humugot ng Sumasabog na Polygon — pero gumamit ng Depensa (Square) at LIGTAS!`, 'good');
+  } else {
+    p.alive = false;
+    addLog(`💥 ${p.name} humugot ng Sumasabog na Polygon at wala nang Depensa — TAPOS NA SIYA!`, 'bad');
+  }
+  render();
+  if(aliveCount()<=1){
+    endGameWin();
+    return;
+  }
+  humanTurnLocked = false;
+  endTurn();
+}
+
+function handleTriviaDraw(idx, card){
+  const p = players[idx];
+  const q = TRIVIA_BANK[Math.floor(Math.random()*TRIVIA_BANK.length)];
+  if(p.isHuman){
+    document.getElementById('triviaQuestion').textContent = q.q;
+    const choicesDiv = document.getElementById('triviaChoices');
+    choicesDiv.innerHTML = q.choices.map((c,i)=>
+      `<button class="choice-btn" id="tc-${i}" onclick="answerTrivia(${i}, ${q.correct}, ${idx})">${c}</button>`
+    ).join('') + `<button class="close-btn" id="triviaContinueBtn" style="display:none;margin-top:10px;" onclick="closeTrivia(${idx})">Magpatuloy</button>`;
+    document.getElementById('triviaOverlay').classList.add('show');
+  } else {
+    const gotItRight = Math.random() < 0.5;
+    addLog(`${p.name} humugot ng Oktagono na Tanong — "${q.q}" — ${gotItRight? 'TAMA! 🎉':'MALI! 😅'} (Sagot: ${q.choices[q.correct]})`, gotItRight?'good':'bad');
+    afterDrawResolved(idx);
+  }
+}
+
+function answerTrivia(chosenIdx, correctIdx, playerIdx){
+  const buttons = document.querySelectorAll('.choice-btn');
+  buttons.forEach((b,i)=>{
+    b.onclick = null;
+    if(i===correctIdx) b.classList.add('correct');
+    else if(i===chosenIdx) b.classList.add('wrong');
+  });
+  const p = players[playerIdx];
+  if(chosenIdx===correctIdx){
+    addLog(`${p.name} sumagot nang TAMA sa tanong ukol sa polygon! 🎉`, 'good');
+  } else {
+    addLog(`${p.name} sumagot nang MALI. Ayos lang, subukan ulit sa susunod!`, 'bad');
+  }
+  document.getElementById('triviaContinueBtn').style.display = 'inline-block';
+}
+
+function closeTrivia(playerIdx){
+  document.getElementById('triviaOverlay').classList.remove('show');
+  afterDrawResolved(playerIdx);
+}
+
+function afterDrawResolved(idx){
+  drawsRequired--;
+  if(!players[idx].alive){ return; }
+  if(drawsRequired>0){
+    if(players[idx].isHuman){
+      humanTurnLocked = false;
+      render();
+    } else {
+      setTimeout(()=>drawCard(idx), 850);
+    }
+  } else {
+    humanTurnLocked = false;
+    endTurn();
+  }
+}
+
+function endTurn(){
+  if(gameOver) return;
+  if(aliveCount()<=1){ endGameWin(); return; }
+  currentPlayerIndex = nextAliveIndex(currentPlayerIndex);
+  drawsRequired = 1 + pendingBonusDraws;
+  pendingBonusDraws = 0;
+  render();
+  if(!players[currentPlayerIndex].isHuman){
+    setTimeout(()=>botTurn(currentPlayerIndex), 900);
+  }
+}
+
+function botTurn(idx){
+  if(gameOver || !players[idx].alive) return;
+  drawCard(idx);
+}
+
+function endGameWin(){
+  gameOver = true;
+  render();
+  const winner = players.find(p=>p.alive);
+  const overlay = document.getElementById('endOverlay');
+  document.getElementById('endTrophy').textContent = (winner && winner.isHuman) ? '🏆' : '💥';
+  document.getElementById('endTitle').textContent = winner ? `${winner.name} ang Panalo!` : 'Tapos na ang Laro';
+  document.getElementById('endText').textContent = (winner && winner.isHuman)
+    ? 'Galing! Natalo mo ang mga bot gamit ang mabilis na pag-iisip tungkol sa mga polygon.'
+    : 'Sumabog ka! Subukan ulit at tandaan: itago ang Depensa (Square) hanggang kailangan mo talaga.';
+  overlay.classList.add('show');
+}
+
+function endGameDraw(){
+  gameOver = true;
+  render();
+  const overlay = document.getElementById('endOverlay');
+  document.getElementById('endTrophy').textContent = '🤝';
+  document.getElementById('endTitle').textContent = 'Patas na Laro';
+  document.getElementById('endText').textContent = 'Naubos ang mga card bago pa may masabugan.';
+  overlay.classList.add('show');
+}
+
+newGame();
+</script>
+</body>
+</html>
